@@ -58,7 +58,7 @@ void patch_db::compute_patch_centers(
 					// if pixel is unfilled, the patch is
 					// not completely full so this patch
 					// cannot be used for lookup operations
-					if (uf(i+pi, j+pj)) 
+					if (uf(i+pi, j+pj))
 						full = false;
 			if (full)
 				top_ += 1;
@@ -108,10 +108,33 @@ bool patch_db::lookup(
 	//              PLACE YOUR CODE HERE                     //
 	///////////////////////////////////////////////////////////
 
-	// dummy implementation: always returns the center of the 
-	// patch indexed by top_/2 as the result of the lookup operation
+    double curlow = (255*255)*nplanes*plen_*plen_;
+    //goes through all full patches
+    for (i=0; i<=top_; i++) {
+        int pi, pj, x, y, p;
+        double sum;
 
-	match = top_/2;
+        //gets the top left corner of the patch
+        pi = patch_center_coords_(i, 0) - w_;
+        pj = patch_center_coords_(i, 1) - w_;
+        
+        //goes through all the pixels to calculate the squares of each pixel
+        for (p=0; p<nplanes; p++) {
+            for (x=0; x<plen_; x++) {
+                for (y=0; y<plen_; y++){
+                    if (target_unfilled[x][y]) continue; //skips if the pixel is unfilled
+                    double dif = im_(pi+x, pj+y, p) - target_planes[p][x][y];
+                    sum += dif*dif;
+                }
+            }
+        }
+        //keeps track of the smallest sum of differences as we go down the list
+        if (sum <= curlow){
+            curlow = sum;
+            match = i;
+        }
+    }
+//	match = top_/2;
 
 	///////////////////////////////////////////////////////////
 	//     DO NOT CHANGE ANYTHING BELOW THIS LINE            //
