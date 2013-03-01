@@ -108,36 +108,38 @@ bool patch_db::lookup(
 	//              PLACE YOUR CODE HERE                     //
 	///////////////////////////////////////////////////////////
 	
-	double curlow = (255*255)*nplanes*plen_*plen_;
-	vnl_vector<int> target_r, target_b, target_g, unfilled, pixel;
-	vectorize(target_unfilled, unfilled);
+	int curlow = (255*255)*nplanes*plen_*plen_;
 	//goes through all full patches
-	for (i=0; i<=top_; i++) {
+	for (i=0; i<top_; i++) {
+	  int pi, pj, x, y, p, sum;
+	  
+	  //gets the top left corner of the patch
+	  pi = patch_center_coords_(i, 0) - w_;
+	  pj = patch_center_coords_(i, 1) - w_;
 	  //printf("patch %d\n", i);
-	  int pi, pj, x, y, p;
-	  int sum, dif;
-	  vnl_double_2 center(patch_center_coords_(i,0), patch_center_coords_(i, 1));
-	  psi patch = psi(center, w_, im_.ni(), im_.nj());    
-	  sum = 0;
 	  //goes through all the pixels to calculate the squares of each pixel
-	  for (p=0; p<nplanes; p++) {
-	    vnl_matrix<int> pix, val;
-	    patch.get_pixels(vil_plane(vil_view_as_planes(im_), p), pix, val);
-	    vectorize(target_planes[p], target);
-	    //printf("plane %d\n", p);
-	    vectorize(pix, pixel);
-	    for (x=0; x<plen_*plen_; x++){
-	      dif = pixel[x] - target[x]*unfilled[x];
+	  sum = 0;
+	  for (x=0; x<2*w_+1; x++) {
+	    for (y=0; y<2*w_+1; y++){
+	      //printf("pixel %d, %d\n", x, y);
+	      if (target_unfilled[x][y]==1) 
+		continue; //skips if the pixel is unfilled
+		int dif = im_(pi+x, pj+y).r - target_planes[0][x][y];
+	      sum += dif*dif;
+	      dif = im_(pi+x, pj+y).g - target_planes[1][x][y];
+	      sum += dif*dif;
+	      dif = im_(pi+x, pj+y).b - target_planes[2][x][y];
 	      sum += dif*dif;
 	    }
 	  }
+	  
 	  //keeps track of the smallest sum of differences as we go down the list
 	  if (sum <= curlow){
 	    curlow = sum;
 	    match = i;
 	  }
 	}
-		//match = top_/2;
+	//match = top_/2;
 	printf("match %d\n",match);
 	///////////////////////////////////////////////////////////
 	//     DO NOT CHANGE ANYTHING BELOW THIS LINE            //
@@ -149,7 +151,7 @@ bool patch_db::lookup(
 	source_j = patch_center_coords_(match,1);
 	
 	return true;
-	}
+}
 
 ///////////////////////////////////////////////////////////
 //     DO NOT CHANGE ANYTHING BELOW THIS LINE            //
