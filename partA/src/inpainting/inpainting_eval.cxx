@@ -62,36 +62,36 @@ double compute_D(psi& PSI,
 				 vnl_double_2& gradient, 
 				 vnl_double_2& front_normal)
 {
-
-	// holds the perpendicular to the gradient
-	vnl_double_2 grad_normal;    
-
-	// compute the gradient at a filled pixel in the 
-	// direction of the front normal
-	if (compute_gradient(PSI, im, unfilled, gradient)) {
-
-		grad_normal(0) = -gradient(1);
-		grad_normal(1) = gradient(0);
-
-		// now compute the normal of the fill front
-		if (compute_normal(PSI, fill_front, front_normal)) {
-			double dotp;
-
-			dotp = fabs(dot_product(grad_normal, front_normal))/alpha;
-
-			return dotp;
-		}
-		if (alpha > 0) 
-			return 1/alpha;
-		else {
-			return 0;
-		}
-	} else {
-		// if we cannot compute a normal, the fill boundary consists
-		// of exactly one pixel; the data term in this case is meaningless
-		// so we just return a default value
-		return 0;
-	}
+	return 1;
+// 	// holds the perpendicular to the gradient
+// 	vnl_double_2 grad_normal;    
+// 
+// 	// compute the gradient at a filled pixel in the 
+// 	// direction of the front normal
+// 	if (compute_gradient(PSI, im, unfilled, gradient)) {
+// 
+// 		grad_normal(0) = -gradient(1);
+// 		grad_normal(1) = gradient(0);
+// 
+// 		// now compute the normal of the fill front
+// 		if (compute_normal(PSI, fill_front, front_normal)) {
+// 			double dotp;
+// 
+// 			dotp = fabs(dot_product(grad_normal, front_normal))/alpha;
+// 
+// 			return dotp;
+// 		}
+// 		if (alpha > 0) 
+// 			return 1/alpha;
+// 		else {
+// 			return 0;
+// 		}
+// 	} else {
+// 		// if we cannot compute a normal, the fill boundary consists
+// 		// of exactly one pixel; the data term in this case is meaningless
+// 		// so we just return a default value
+// 		return 0;
+// 	}
 }
 
 ///////////////////////////////////////////////////////////
@@ -115,9 +115,27 @@ double compute_C(psi& PSI, const vil_image_view<double>& C,
 	///////////////////////////////////////////////////////////
 	//              PLACE YOUR CODE HERE                     //
 	///////////////////////////////////////////////////////////
-
-	// dummy routine
-	return 1;
+	vnl_matrix<double> c_vals;
+	vnl_matrix<int> valid, unfilled_pixels, unfilled_valid;
+	vnl_vector<int> pix_, unfilled_pix_;
+	double sum;
+	
+	//get the values of images
+	PSI.get_pixels(C, c_vals, valid);
+	PSI.get_pixels(unfilled, unfilled_pixels, unfilled_valid);
+	
+	//sets filled pixels to 1, and unfilled to 0
+	unfilled_pixels = 1 - unfilled_pixels;
+	
+	PSI.begin(unfilled_pixels);
+	
+	while(PSI.next(unfilled_pixels)){
+	  int i, j;
+	  PSI.psi_coord(i, j);
+	  sum += c_vals[i][j];
+	}
+	
+	return sum/(PSI.sz()*PSI.sz());
 
 	///////////////////////////////////////////////////////////
 	//     DO NOT CHANGE ANYTHING BELOW THIS LINE            //
