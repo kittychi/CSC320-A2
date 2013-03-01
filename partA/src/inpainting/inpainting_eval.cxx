@@ -62,36 +62,36 @@ double compute_D(psi& PSI,
 				 vnl_double_2& gradient, 
 				 vnl_double_2& front_normal)
 {
-	return 1;
-// 	// holds the perpendicular to the gradient
-// 	vnl_double_2 grad_normal;    
-// 
-// 	// compute the gradient at a filled pixel in the 
-// 	// direction of the front normal
-// 	if (compute_gradient(PSI, im, unfilled, gradient)) {
-// 
-// 		grad_normal(0) = -gradient(1);
-// 		grad_normal(1) = gradient(0);
-// 
-// 		// now compute the normal of the fill front
-// 		if (compute_normal(PSI, fill_front, front_normal)) {
-// 			double dotp;
-// 
-// 			dotp = fabs(dot_product(grad_normal, front_normal))/alpha;
-// 
-// 			return dotp;
-// 		}
-// 		if (alpha > 0) 
-// 			return 1/alpha;
-// 		else {
-// 			return 0;
-// 		}
-// 	} else {
-// 		// if we cannot compute a normal, the fill boundary consists
-// 		// of exactly one pixel; the data term in this case is meaningless
-// 		// so we just return a default value
-// 		return 0;
-// 	}
+
+	// holds the perpendicular to the gradient
+	vnl_double_2 grad_normal;    
+
+	// compute the gradient at a filled pixel in the 
+	// direction of the front normal
+	if (compute_gradient(PSI, im, unfilled, gradient)) {
+
+		grad_normal(0) = -gradient(1);
+		grad_normal(1) = gradient(0);
+
+		// now compute the normal of the fill front
+		if (compute_normal(PSI, fill_front, front_normal)) {
+			double dotp;
+
+			dotp = fabs(dot_product(grad_normal, front_normal))/alpha;
+
+			return dotp;
+		}
+		if (alpha > 0) 
+			return 1/alpha;
+		else {
+			return 0;
+		}
+	} else {
+		// if we cannot compute a normal, the fill boundary consists
+		// of exactly one pixel; the data term in this case is meaningless
+		// so we just return a default value
+		return 0;
+	}
 }
 
 ///////////////////////////////////////////////////////////
@@ -112,12 +112,8 @@ double compute_C(psi& PSI, const vil_image_view<double>& C,
 	//     DO NOT CHANGE ANYTHING ABOVE THIS LINE            //
 	///////////////////////////////////////////////////////////
 	
-	///////////////////////////////////////////////////////////
-	//              PLACE YOUR CODE HERE                     //
-	///////////////////////////////////////////////////////////
 	vnl_matrix<double> c_vals;
 	vnl_matrix<int> valid, unfilled_pixels, unfilled_valid;
-	vnl_vector<int> pix_, unfilled_pix_;
 	double sum;
 	
 	//get the values of images
@@ -177,15 +173,67 @@ bool compute_gradient(psi& PSI,
 	//     DO NOT CHANGE ANYTHING ABOVE THIS LINE            //
 	///////////////////////////////////////////////////////////
 
+	vnl_matrix<int> greys, valid, unfilled_pixels, unfilled_valid;
+	vnl_matrix<int> smask_x(3,3), smask_y(3,3);
+	double mag, largestMag;
+	bool hasValidPatch = false;
+	largestMag = 0;
+	mag =0;
 	
-	///////////////////////////////////////////////////////////
-	//              PLACE YOUR CODE HERE                     //
-	///////////////////////////////////////////////////////////
-
-        // dummy routine
-        grad(0) = 0;
-        grad(1) = 1; 
-	return true;
+	//sobel masks
+	smask_x(0,0) = -1; smask_x(1,0) = -2; smask_x(2,0) = -1;
+	smask_x(0,1) = 0; smask_x(1,1) = 0; smask_x(2,1) = 0;
+	smask_x(0,2) = 1; smask_x(1,2) = 2; smask_x(2,2) = 1;
+	
+	smask_y = smask_x.transpose();
+	
+	//setting up the unfilled mask
+	PSI.get_pixels(unfilled, unfilled_pixels, unfilled_valid);
+	unfilled_pixels = 1 - unfilled_pixels;
+	
+	//goes through all the nonfilled pixels contained in the patch passed in
+	PSI.begin(unfilled_pixels);
+	while (PSI.next(unfilled_pixels)) {
+	  //calculate the gradient of each valid 3x3 patch within the patch
+	  int p, i, j;
+	  PSI.image_coord(i, j);
+	  
+	  //creates a psi for the 3x3 patch centered at the current pixel
+	  vnl_double_2 center(i,j);
+	  psi patch(center, 1, inpainted_grayscale.ni(), inpainted_grayscale.nj());
+	  patch.get_pixels(inpainted_grayscale, greys, valid);
+	  
+	  //gets the intensities for the 3x3 patch
+	  vnl_matrix<int> A, A_valid;
+	  patch.get_pixels(inpainted_grayscale, A, A_valid);
+	  
+	  double gx, gy;
+	  int pi, pj;
+	  //goes through each of the pixels in the 3x3 to calculate the gradient
+	  patch.begin();
+	  while(patch.next()) {
+	    patch.image_coord(i, j);
+	    patch.psi_coord(pi, pj);
+	    if (valid[pi][pj] == 0 || unfilled(i,j) == 1) {
+	      //pixels is invalid or is unfilled
+	      gx = 0;
+	      gy = 1;
+	      break;
+	    }
+	    gx += A[pi][pj]*smask_x[pi][pj];
+	    gy += A[pi][pj]*smask_y[pi][pj];
+	  }
+	  
+	  mag = sqrt(pow(gx,2) + pow(gy,2));
+	  
+	  if (mag > largestMag) {
+	    hasValidPatch = true;
+	    largestMag = mag;
+	    grad(0) = gx;
+	    grad(1) = gy;
+	  }
+	}
+	return hasValidPatch;
 
 	///////////////////////////////////////////////////////////
 	//     DO NOT CHANGE ANYTHING BELOW THIS LINE            //
